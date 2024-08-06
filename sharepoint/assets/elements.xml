@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Elements xmlns="http://schemas.microsoft.com/sharepoint/">
+    <Field ID="{479ed017-65b3-40c2-a409-b65e37f573cf}"
+    Type="Text" DisplayName="Folder" 
+    Required="FALSE" 
+    EnforceUniqueValues="FALSE" 
+    Indexed="FALSE" 
+    MaxLength="255"  
+    Group="Test"
+    StaticName="ProjectFolder" 
+    Name="ProjectFolder"    
+    ClientSideComponentId="fee36f6c-7625-4034-a0d9-3b8d5f422fce" 
+    ClientSideComponentProperties="{&quot;listNameWithFolders&quot;: &quot;Project Spaces&quot;}" />
+</Elements>

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/spfx-serve.schema.json",
+  "port": 4321,
+  "https": true,
+  "serveConfigurations": {
+    "default": {
+      "pageUrl": "https://ysb26.sharepoint.com/sites/site2/Lists/Projects/AllItems.aspx",
+      "fieldCustomizers": {
+        "ProjectFolder": {
+          "id": "fee36f6c-7625-4034-a0d9-3b8d5f422fce",
+          "properties": {
+            "listNameWithFolders": "Project Spaces"
+          }
+        }
+      }
+    },
+    "projectFolder": {
+      "pageUrl": "https://ysb26.sharepoint.com/sites/site2/Lists/Projects/AllItems.aspx",
+      "fieldCustomizers": {
+        "ProjectFolder": {
+          "id": "fee36f6c-7625-4034-a0d9-3b8d5f422fce",
+          "properties": {
+            "listNameWithFolders": "Project Spaces"
+          }
+        }
+      }
+    }
+  }
+}

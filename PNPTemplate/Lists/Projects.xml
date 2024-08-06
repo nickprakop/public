@@ -1,0 +1,36 @@
+<pnp:ListInstance Title="Projects" Description="Projects" DocumentTemplate="" TemplateType="100" Url="Lists/Projects" EnableVersioning="true" MinorVersionLimit="0" MaxVersionLimit="50" DraftVersionVisibility="0" TemplateFeatureID="00bfea71-de22-43b2-a848-c05709900100" EnableFolderCreation="false" DefaultDisplayFormUrl="{site}/Lists/Projects/DispForm.aspx" DefaultEditFormUrl="{site}/Lists/Projects/EditForm.aspx" DefaultNewFormUrl="{site}/Lists/Projects/NewForm.aspx" ImageUrl="/_layouts/15/images/itgen.png?rev=47" IrmExpire="false" IrmReject="false" IsApplicationList="false" ValidationFormula="" ValidationMessage=""
+    xmlns:pnp="http://schemas.dev.office.com/PnP/2022/09/ProvisioningSchema">
+    <pnp:ContentTypeBindings>
+        <pnp:ContentTypeBinding ContentTypeID="0x01" Default="true" />
+        <pnp:ContentTypeBinding ContentTypeID="0x0120" />
+    </pnp:ContentTypeBindings>
+    <pnp:Views>
+        <View Name="{45A42530-D810-472B-AC0B-A2D7EA16AFC3}" DefaultView="TRUE" MobileView="TRUE" MobileDefaultView="TRUE" Type="HTML" DisplayName="All Items" Url="{site}/Lists/Projects/AllItems.aspx" Level="1" BaseViewID="1" ContentTypeID="0x" ImageUrl="/_layouts/15/images/generic.png?rev=47">
+            <Query />
+            <ViewFields>
+                <FieldRef Name="LinkTitle" />
+                <FieldRef Name="EventDate" />
+                <FieldRef Name="ProjectStatus" />
+                <FieldRef Name="ProjectFolder" />
+            </ViewFields>
+            <RowLimit Paged="TRUE">30</RowLimit>
+            <JSLink>clienttemplates.js</JSLink>
+        </View>
+    </pnp:Views>
+    <pnp:Fields>
+        <Field Type="DateTime" DisplayName="EventDate" Required="FALSE" EnforceUniqueValues="FALSE" Indexed="FALSE" Format="DateOnly" FriendlyDisplayFormat="Disabled" ID="{b7792b2c-4f0a-45a1-942d-6193da28a859}" SourceID="{{listid:Projects}}" StaticName="EventDate" Name="EventDate" ColName="datetime1" RowOrdinal="0" />
+        <Field Type="Choice" DisplayName="Status" Required="FALSE" EnforceUniqueValues="FALSE" Indexed="FALSE" Format="Dropdown" FillInChoice="FALSE" ID="{10d749a5-39b4-4eb6-97a4-2b8dbc45337f}" SourceID="{{listid:Projects}}" StaticName="ProjectStatus" Name="ProjectStatus" ColName="nvarchar7" RowOrdinal="0" CustomFormatter="" Version="1">
+            <CHOICES>
+                <CHOICE>Planned</CHOICE>
+                <CHOICE>In Progress</CHOICE>
+                <CHOICE>Rejected</CHOICE>
+                <CHOICE>Published</CHOICE>
+            </CHOICES>
+        </Field>
+        <!-- <Field Type="Text" DisplayName="Folder" Required="FALSE" EnforceUniqueValues="FALSE" Indexed="FALSE" MaxLength="255" ID="{479ed017-65b3-40c2-a409-b65e37f573cf}" SourceID="{{listid:Projects}}" StaticName="ProjectFolder" Name="ProjectFolder" ColName="nvarchar8" RowOrdinal="0" CustomFormatter="" Version="10"/> -->
+    </pnp:Fields>
+    <pnp:FieldRefs>
+        <pnp:FieldRef ID="fa564e0f-0c70-4ab9-b863-0177e6ddd247" Name="Title" DisplayName="Title" />
+        <pnp:FieldRef ID="76d13cd2-1bae-45a5-8b74-545b87b65037" Name="_ColorTag" DisplayName="Color Tag" />
+    </pnp:FieldRefs>    
+</pnp:ListInstance>
