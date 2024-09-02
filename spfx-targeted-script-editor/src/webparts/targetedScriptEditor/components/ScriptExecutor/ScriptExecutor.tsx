@@ -1,4 +1,3 @@
-/* eslint-disable */
 import * as React from 'react';
 import { IPropertyFieldGroupOrPerson } from '@pnp/spfx-property-controls';
 import { BaseComponentContext } from '@microsoft/sp-component-base';

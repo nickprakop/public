@@ -1,4 +1,3 @@
-/* eslint-disable */
 import * as React from 'react';
 import { IScriptEditorProps } from './IScriptEditorProps';
 import { Placeholder } from "@pnp/spfx-controls-react/lib/Placeholder";
