@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { PageContext } from "@microsoft/sp-page-context";
 import { IPropertyFieldGroupOrPerson } from "@pnp/spfx-property-controls/lib/PropertyFieldPeoplePicker";
 import * as React from "react";

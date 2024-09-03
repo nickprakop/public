@@ -1,6 +1,6 @@
+import { Placeholder } from "@pnp/spfx-controls-react/lib/Placeholder";
 import * as React from 'react';
 import { IScriptEditorProps } from './IScriptEditorProps';
-import { Placeholder } from "@pnp/spfx-controls-react/lib/Placeholder";
 
 export default class ScriptEditor extends React.Component<IScriptEditorProps, any> {
     constructor(props: IScriptEditorProps, state: any) {
