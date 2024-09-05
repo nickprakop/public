@@ -26,7 +26,7 @@ stages:
            versionSpec: '18.x'
        - script: |
           npm install
-          workingDirectory: '${{ parameters.build_path }}'
+          workingDirectory: $(Build.SourcesDirectory)
          displayName: 'NPM install'
 
        
