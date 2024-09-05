@@ -6,6 +6,8 @@
 #    include:
 #      - spfx-targeted-script-editor
 
+trigger: none
+
 stages:
   - stage: PrepareEnvironment
     pool:
