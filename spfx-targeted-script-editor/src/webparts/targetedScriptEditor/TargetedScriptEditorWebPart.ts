@@ -1,5 +1,5 @@
 
-import { Version } from '@microsoft/sp-core-library';
+import { DisplayMode, Version } from '@microsoft/sp-core-library';
 import { SPComponentLoader } from '@microsoft/sp-loader';
 import { IPropertyPaneConfiguration, IPropertyPaneField, PropertyPaneToggle } from "@microsoft/sp-property-pane";
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
@@ -12,10 +12,11 @@ import spservices from '../../services/spservices';
 
 export interface ITargetedScriptEditorWebPartProps {
   description: string;
-  scriptBody: string; 
+  scriptBody: string;
   spPageContextInfo: boolean;
   teamsContext: boolean;
   targetedGroups: IPropertyFieldGroupOrPerson[];
+  removePadding: boolean
 }
 
 export interface ITargetedScriptEditorWebPartState {
@@ -45,33 +46,67 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
   }
 
   public render(): void {
-    if (this.properties.scriptBody?.length > 0) {      
+    if (this.displayMode == DisplayMode.Read) {
+      if (this.properties.removePadding) {
+        let element = this.domElement.parentElement;
+        // check up to 5 levels up for padding and exit once found
+        for (let i = 0; i < 5 && element !== null; i++) {
+          const style = window.getComputedStyle(element);
+          const hasPadding = style.paddingTop !== "0px";
+          if (hasPadding) {
+            element.style.paddingTop = "0px";
+            element.style.paddingBottom = "0px";
+            element.style.marginTop = "0px";
+            element.style.marginBottom = "0px";
+          }
+          element = element.parentElement;
+        }
+      }
+    }
+
+    let isSiteAdmin = this.context.pageContext.legacyPageContext[`isSiteAdmin`];
+    let isSiteOwner = this.context.pageContext.legacyPageContext[`isSiteOwner`];
+
+    if (this.properties.scriptBody?.length > 0) {
+
       ReactDom.unmountComponentAtNode(this.domElement);
-      if (this.properties.targetedGroups?.length > 0) {
+      if (this.properties.targetedGroups?.length === 0 || isSiteAdmin || isSiteOwner) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.executeScript(this.domElement);
+      } else {
         let proms: any[] = [];
         const errors: string[] = [];
         const _sv = new spservices();
-        this.properties.targetedGroups.map((item) => {
-          proms.push(_sv.isMember(item.fullName, this.context.pageContext.legacyPageContext[`userId`], this.context.pageContext.site.absoluteUrl));
-        });
-        void Promise.race(
-          proms.map(p => {
-            return p.catch(err => {
-              errors.push(err);
-              if (errors.length >= proms.length) {
-                this.domElement.innerHTML = "";
-                throw errors;
-              }
-              // eslint-disable-next-line @typescript-eslint/no-empty-function
-              return new Promise(() => { });
-            });
-          })).then(val => {
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            this.executeScript(this.domElement);
-          });
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        this.executeScript(this.domElement);
+        _sv.getCurrentUserGroups(this.context.pageContext.site.absoluteUrl)
+          .then(userGroups => {
+            let targetGroups = this.properties.targetedGroups.map(gr => gr.login);
+            let userInTargetGroups = targetGroups.filter(gr => userGroups.includes(gr));
+            if (userInTargetGroups.length > 0) {
+              void this.executeScript(this.domElement);
+            } else {
+              this.properties.targetedGroups.map((item) => {
+                proms.push(_sv.tryGetGroupMembers(item.fullName, this.context.pageContext.site.absoluteUrl));
+              });
+              void Promise.race(
+                proms.map(p => {
+                  return p.catch(err => {
+                    errors.push(err);
+                    if (errors.length >= proms.length) {
+                      this.domElement.innerHTML = "";
+                      throw errors;
+                    }
+                    // eslint-disable-next-line @typescript-eslint/no-empty-function
+                    return new Promise(() => { });
+                  });
+                })).then(val => {
+                  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+                  this.executeScript(this.domElement);
+                });
+            }
+          })
+          .catch(err => {
+            console.log(err);
+          })
       }
     } else {
       const placeHolderElement = React.createElement(Placeholder, {
@@ -108,12 +143,11 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
   }
 
   protected getPropertyPaneConfiguration(): IPropertyPaneConfiguration {
-    let webPartOptions: IPropertyPaneField<any>[] = [     
+    let webPartOptions: IPropertyPaneField<any>[] = [
       this.editorProp.PropertyFieldCodeEditor('scriptBody', {
         label: 'Edit Code',
         panelTitle: 'Edit Code',
         initialValue: this.properties.scriptBody,
-        // onPropertyChange: this.scriptUpdate,
         onPropertyChange: this.onPropertyPaneFieldChanged,
         properties: this.properties,
         disabled: false,
@@ -125,14 +159,25 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
         initialData: this.properties.targetedGroups,
         allowDuplicate: false,
         principalType: [this.peoplePicker.PrincipalType.SharePoint],
-        //onPropertyChange: this.onTargetedGroupsChanged,
         onPropertyChange: this.onPropertyPaneFieldChanged,
         context: this.context as any,
         properties: this.properties,
         onGetErrorMessage: undefined,
         deferredValidationTime: 0,
         key: 'groupsFieldId'
-      })
+      }),
+      PropertyPaneToggle("removePadding", {
+        label: "Remove top/bottom padding of web part container",
+        checked: this.properties.removePadding,
+        onText: "Remove padding",
+        offText: "Keep padding"
+      }),
+      PropertyPaneToggle("spPageContextInfo", {
+        label: "Enable classic _spPageContextInfo",
+        checked: this.properties.spPageContextInfo,
+        onText: "Enabled",
+        offText: "Disabled"
+      }),
     ];
 
     if (this.context.sdks.microsoftTeams) {
