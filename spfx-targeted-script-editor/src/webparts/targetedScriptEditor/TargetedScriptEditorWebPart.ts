@@ -46,6 +46,8 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
   }
 
   public render(): void {
+    let isWebPartHiden = true;
+
     if (this.displayMode == DisplayMode.Read) {
       if (this.properties.removePadding) {
         let element = this.domElement.parentElement;
@@ -100,7 +102,8 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
                   });
                 })).then(val => {
                   // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                  this.executeScript(this.domElement);
+                  isWebPartHiden = false;
+                  void this.executeScript(this.domElement);
                 });
             }
           })
@@ -109,14 +112,29 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
           })
       }
     } else {
-      const placeHolderElement = React.createElement(Placeholder, {
-        iconName: "Edit",
-        iconText: "Configure your web part",
-        description: "Please configure the web part.",
-        buttonLabel: "Configure",
-        onConfigure: this._onConfigure,
-      });
-      ReactDom.render(placeHolderElement, this.domElement);
+      if (this.displayMode == DisplayMode.Edit) {
+        const placeHolderElement = React.createElement(Placeholder, {
+          iconName: "Edit",
+          iconText: "Configure your web part",
+          description: "Please configure the web part.",
+          buttonLabel: "Configure",
+          onConfigure: this._onConfigure,
+        });
+        ReactDom.render(placeHolderElement, this.domElement);
+      }
+    }
+
+    if (this.displayMode === DisplayMode.Read && isWebPartHiden) {
+      let element = this.domElement.parentElement;
+      // check up to 3 levels up for padding and exit once found
+      for (let i = 0; i < 5 && element !== null && element !== undefined; i++) {
+        const style = window.getComputedStyle(element);
+        element.style.paddingTop = '0px';
+        element.style.paddingBottom = '0px';
+        element.style.marginTop = '0px';
+        element.style.marginBottom = '0px';
+        element = element.parentElement;
+      }
     }
   }
 
