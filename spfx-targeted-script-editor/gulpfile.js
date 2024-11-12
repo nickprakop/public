@@ -14,9 +14,6 @@ build.rig.getTasks = function () {
   return result;
 };
 
-const crntConfig = build.getConfig();
-
-
 // Extend the SPFx build rig, and overwrite the `shouldWarningsFailBuild` property
 if (true) {
   class CustomSPWebBuildRig extends build.SPWebBuildRig {

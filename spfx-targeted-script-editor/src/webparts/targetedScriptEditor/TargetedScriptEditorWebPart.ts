@@ -1,35 +1,28 @@
-
-import { DisplayMode, Version } from '@microsoft/sp-core-library';
+import { DisplayMode } from '@microsoft/sp-core-library';
 import { SPComponentLoader } from '@microsoft/sp-loader';
-import { IPropertyPaneConfiguration, IPropertyPaneField, PropertyPaneToggle } from "@microsoft/sp-property-pane";
+import { IPropertyPaneConfiguration, IPropertyPaneField, PropertyPaneTextField, PropertyPaneToggle } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { Placeholder } from '@pnp/spfx-controls-react';
-import { IPropertyFieldGroupOrPerson } from '@pnp/spfx-property-controls/lib/PropertyFieldPeoplePicker';
+import { IPropertyFieldGroupOrPerson } from '@pnp/spfx-property-controls';
 import * as strings from 'TargetedScriptEditorWebPartStrings';
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
-import spservices from '../../services/spservices';
-
+import AudienceService from '../../services/AudienceService';
 export interface ITargetedScriptEditorWebPartProps {
-  description: string;
+  debugTitle: string;
   scriptBody: string;
-  spPageContextInfo: boolean;
   teamsContext: boolean;
   targetedGroups: IPropertyFieldGroupOrPerson[];
-  removePadding: boolean
-}
-
-export interface ITargetedScriptEditorWebPartState {
-  exucuteScript: boolean;
+  removePadding: boolean;
+  alwaysDisplayForSiteAdmin: boolean;
 }
 
 export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<ITargetedScriptEditorWebPartProps> {
-  // public _scriptBodyEditorPanel;
-  // public _spPeoplePicker;
-
   public _unqiueId;
-  editorProp: any;
-  peoplePicker: any;
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  bodyEditorPanelType: any;
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises     
+  peoplePickerType: any;
 
 
   constructor() {
@@ -40,100 +33,74 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
     return true;
   }
 
-  protected _onConfigure = () => {
+  protected _onConfigure = (): void => {
     // Context of the web part
     this.context.propertyPane.open();
   }
 
-  public render(): void {
-    let isWebPartHiden = true;
+  public async render() {
 
-    if (this.displayMode == DisplayMode.Read) {
-      if (this.properties.removePadding) {
-        let element = this.domElement.parentElement;
-        // check up to 5 levels up for padding and exit once found
-        for (let i = 0; i < 5 && element !== null; i++) {
-          const style = window.getComputedStyle(element);
-          const hasPadding = style.paddingTop !== "0px";
-          if (hasPadding) {
-            element.style.paddingTop = "0px";
-            element.style.paddingBottom = "0px";
-            element.style.marginTop = "0px";
-            element.style.marginBottom = "0px";
+    const debugTitle = this.properties.debugTitle?.length > 0 ? this.properties.debugTitle : "";
+    const isSiteAdmin = this.context.pageContext.legacyPageContext[`isSiteAdmin`];
+    const targetedGroups = this.properties.targetedGroups;
+    const scriptBody = this.properties.scriptBody;
+
+    if (this.displayMode === DisplayMode.Edit && (!scriptBody || scriptBody.trim().length === 0)) {
+      const placeHolderElement = React.createElement(Placeholder, {
+        iconName: "Edit",
+        iconText: "Configure your web part",
+        description: "Please configure the web part.",
+        buttonLabel: "Configure",
+        onConfigure: this._onConfigure,
+      });
+      ReactDom.render(placeHolderElement, this.domElement);
+    } else {
+      let isWebPartHiden = true;
+      if (scriptBody?.length > 0) {
+        if (!targetedGroups || targetedGroups.length === 0 || (isSiteAdmin && this.properties.alwaysDisplayForSiteAdmin)) {
+          if (debugTitle.length > 0) {
+            let reson = this.properties.targetedGroups?.length === 0 ? 'Groups not defined' : `${this.context.pageContext.user.loginName} is Site Admin`;
+            console.log(`${debugTitle} - Shown. ${reson}`);
           }
+          isWebPartHiden = false;
+        } else {
+          const audienceService = new AudienceService(this.context.pageContext.site.absoluteUrl);
+          const isInAudience = await audienceService.CheckAudiences(targetedGroups);
+          if (isInAudience) {
+            if (debugTitle.length > 0) {
+              console.log(`${debugTitle} - Shown. ${this.context.pageContext.user.loginName} Has access/belongs/Admin to groups: ${targetedGroups?.map(gr => gr.fullName).join(',')}`);
+            }
+            isWebPartHiden = false;
+          } else {
+            if (debugTitle.length > 0) {
+              console.log(`${debugTitle} - Hidden. ${this.context.pageContext.user.loginName} doesn't have access/belongs to any of groups: ${targetedGroups?.map((gr) => gr.fullName).join(',')}`);
+            }
+          }
+        }
+      }
+
+      if (isWebPartHiden) {
+        this.domElement.innerHTML = '';
+      }
+
+      if (this.displayMode === DisplayMode.Read && (isWebPartHiden || this.properties?.removePadding)) {
+
+        let element = this.domElement.parentElement;
+        // check up to 3 levels up for padding and exit once found
+        for (let i = 0; i < 5 && element !== null && element !== undefined; i++) {
+          const style = window.getComputedStyle(element);
+          element.style.paddingTop = '0px';
+          element.style.paddingBottom = '0px';
+          element.style.marginTop = '0px';
+          element.style.marginBottom = '0px';
           element = element.parentElement;
         }
       }
-    }
-
-    let isSiteAdmin = this.context.pageContext.legacyPageContext[`isSiteAdmin`];
-    let isSiteOwner = this.context.pageContext.legacyPageContext[`isSiteOwner`];
-
-    if (this.properties.scriptBody?.length > 0) {
 
       ReactDom.unmountComponentAtNode(this.domElement);
-      if (this.properties.targetedGroups?.length === 0 || isSiteAdmin || isSiteOwner) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        this.executeScript(this.domElement);
-      } else {
-        let proms: any[] = [];
-        const errors: string[] = [];
-        const _sv = new spservices();
-        _sv.getCurrentUserGroups(this.context.pageContext.site.absoluteUrl)
-          .then(userGroups => {
-            let targetGroups = this.properties.targetedGroups.map(gr => gr.login);
-            let userInTargetGroups = targetGroups.filter(gr => userGroups.includes(gr));
-            if (userInTargetGroups.length > 0) {
-              void this.executeScript(this.domElement);
-            } else {
-              this.properties.targetedGroups.map((item) => {
-                proms.push(_sv.tryGetGroupMembers(item.fullName, this.context.pageContext.site.absoluteUrl));
-              });
-              void Promise.race(
-                proms.map(p => {
-                  return p.catch(err => {
-                    errors.push(err);
-                    if (errors.length >= proms.length) {
-                      this.domElement.innerHTML = "";
-                      throw errors;
-                    }
-                    // eslint-disable-next-line @typescript-eslint/no-empty-function
-                    return new Promise(() => { });
-                  });
-                })).then(val => {
-                  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                  isWebPartHiden = false;
-                  void this.executeScript(this.domElement);
-                });
-            }
-          })
-          .catch(err => {
-            console.log(err);
-          })
-      }
-    } else {
-      if (this.displayMode == DisplayMode.Edit) {
-        const placeHolderElement = React.createElement(Placeholder, {
-          iconName: "Edit",
-          iconText: "Configure your web part",
-          description: "Please configure the web part.",
-          buttonLabel: "Configure",
-          onConfigure: this._onConfigure,
-        });
-        ReactDom.render(placeHolderElement, this.domElement);
-      }
-    }
 
-    if (this.displayMode === DisplayMode.Read && isWebPartHiden) {
-      let element = this.domElement.parentElement;
-      // check up to 3 levels up for padding and exit once found
-      for (let i = 0; i < 5 && element !== null && element !== undefined; i++) {
-        const style = window.getComputedStyle(element);
-        element.style.paddingTop = '0px';
-        element.style.paddingBottom = '0px';
-        element.style.marginTop = '0px';
-        element.style.marginBottom = '0px';
-        element = element.parentElement;
+      if (!isWebPartHiden) {
+        void this.executeScript(this.domElement);
       }
     }
   }
@@ -142,19 +109,15 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
     ReactDom.unmountComponentAtNode(this.domElement);
   }
 
-  protected get dataVersion(): Version {
-    return Version.parse('1.0');
-  }
-
   protected async loadPropertyPaneResources(): Promise<void> {
     //import { PropertyFieldCodeEditor, PropertyFieldCodeEditorLanguages } from '@pnp/spfx-property-controls/lib/PropertyFieldCodeEditor';
-    this.editorProp = await import(
+    this.bodyEditorPanelType = await import(
       /* webpackChunkName: 'scripteditor' */
       '@pnp/spfx-property-controls/lib/PropertyFieldCodeEditor'
     );
 
     // import { PropertyFieldPeoplePicker, IPropertyFieldGroupOrPerson, PrincipalType } from '@pnp/spfx-property-controls/lib/PropertyFieldPeoplePicker';
-    this.peoplePicker = await import(
+    this.peoplePickerType = await import(
       /* webpackChunkName: 'scripteditor' */
       '@pnp/spfx-property-controls/lib/PropertyFieldPeoplePicker'
     );
@@ -162,7 +125,7 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
 
   protected getPropertyPaneConfiguration(): IPropertyPaneConfiguration {
     let webPartOptions: IPropertyPaneField<any>[] = [
-      this.editorProp.PropertyFieldCodeEditor('scriptBody', {
+      this.bodyEditorPanelType.PropertyFieldCodeEditor('scriptBody', {
         label: 'Edit Code',
         panelTitle: 'Edit Code',
         initialValue: this.properties.scriptBody,
@@ -170,13 +133,13 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
         properties: this.properties,
         disabled: false,
         key: 'codeEditorFieldId',
-        language: this.editorProp.PropertyFieldCodeEditorLanguages.JavaScript
+        language: this.bodyEditorPanelType.PropertyFieldCodeEditorLanguages.JavaScript
       }),
-      this.peoplePicker.PropertyFieldPeoplePicker('targetedGroups', {
-        label: 'Target Audience',
+      this.peoplePickerType.PropertyFieldPeoplePicker('targetedGroups', {
+        label: 'Target Audience. Empty means visible for all',
         initialData: this.properties.targetedGroups,
         allowDuplicate: false,
-        principalType: [this.peoplePicker.PrincipalType.SharePoint],
+        principalType: [this.peoplePickerType.PrincipalType.SharePoint],
         onPropertyChange: this.onPropertyPaneFieldChanged,
         context: this.context as any,
         properties: this.properties,
@@ -190,13 +153,24 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
         onText: "Remove padding",
         offText: "Keep padding"
       }),
-      PropertyPaneToggle("spPageContextInfo", {
-        label: "Enable classic _spPageContextInfo",
-        checked: this.properties.spPageContextInfo,
-        onText: "Enabled",
-        offText: "Disabled"
-      }),
+
     ];
+
+    let webPartDebugOptions: IPropertyPaneField<any>[] = [
+      PropertyPaneToggle("alwaysDisplayForSiteAdmin", {
+        label: "Always Display for Site Administrators",
+        checked: this.properties.alwaysDisplayForSiteAdmin,
+        onText: "Display",
+        offText: "Hide"
+      }),
+      PropertyPaneTextField('debugTitle', {
+        label: "Title",
+        multiline: false, // Set to true if you need a multi-line input
+        resizable: false,
+        placeholder: "Enter a title for the debugging.",
+        description: "Enter a title for the debugging."
+      }),
+    ]
 
     if (this.context.sdks.microsoftTeams) {
       let config = PropertyPaneToggle("teamsContext", {
@@ -217,6 +191,10 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
           groups: [
             {
               groupFields: webPartOptions
+            },
+            {
+              groupName: "Debugging",
+              groupFields: webPartDebugOptions
             }
           ]
         }
@@ -260,7 +238,7 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
     this.domElement.innerHTML = this.properties.scriptBody;
     // clean up added script tags in case of smart re-load        
     const headTag = document.getElementsByTagName("head")[0] || document.documentElement;
-    let scriptTags = headTag.getElementsByTagName("script");
+    const scriptTags = headTag.getElementsByTagName("script");
     for (let i = 0; i < scriptTags.length; i++) {
       const scriptTag = scriptTags[i];
       if (scriptTag.hasAttribute("pnpname") && scriptTag.attributes["pnpname"].value == this._unqiueId) {
@@ -268,10 +246,7 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
       }
     }
 
-    if (this.properties.spPageContextInfo && !window["_spPageContextInfo"]) {
-      window["_spPageContextInfo"] = this.context.pageContext.legacyPageContext;
-    }
-
+    // window["_spPageContextInfo"] = this.context.pageContext.legacyPageContext;
     if (this.properties.teamsContext && !window["_teamsContexInfo"]) {
       window["_teamsContexInfo"] = this.context.sdks.microsoftTeams?.context;
     }
