@@ -1,6 +1,7 @@
 export default class AudienceService {
 
   webAbsoluteUrl: string;
+  
   constructor(webAbsoluteUrl: string) {
     this.webAbsoluteUrl = webAbsoluteUrl;
   }
@@ -10,8 +11,6 @@ export default class AudienceService {
     if (targetedGroups?.length === 0) {
       checkResult = true;
     } else {
-
-      const errors: string[] = [];
 
       const userGroups = await this.getCurrentUserGroups()
       const targetedGroupNames = targetedGroups.map(gr => gr.login);
@@ -34,54 +33,68 @@ export default class AudienceService {
   */
   public async isMember(groupName: string, userId: string): Promise<boolean> {
     const reqUrl = this.webAbsoluteUrl + "/_api/web/sitegroups/getByName('" + groupName + "')/Users?$filter=Id eq " + userId;
-    const response = await fetch(`${reqUrl}`, {
-      method: "GET",
-      headers: {
-        "Accept": "application/json;odata=verbose",
-        "odata-version": ""
+    try {
+      const response = await fetch(`${reqUrl}`, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json;odata=verbose",
+          "odata-version": ""
+        }
+      });
+
+      if (response.ok) {
+        return true;
       }
-    });
 
-    if (!response.ok) {
-      return false;
+    } catch (error) {
+      console.log(error);
     }
-
-    return true;
+    return false;
   }
 
   public async tryGetGroupMembers(groupName: string): Promise<boolean> {
-    const reqUrl = this.webAbsoluteUrl + "/_api/web/sitegroups/getByName('" + groupName + "')/Users?$top=1"
-    const response = await fetch(`${reqUrl}`, {
-      method: "GET",
-      headers: {
-        "Accept": "application/json;odata=verbose",
-        "odata-version": ""
+    const reqUrl = this.webAbsoluteUrl + "/_api/web/sitegroups/getByName('" + groupName + "')/Users?$top=1";
+    try {
+      const response = await fetch(reqUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json;odata=verbose",
+          "odata-version": ""
+        }
+      });
+
+      if (response.status === 403 || !response.ok) {
+        return false;
       }
-    });
-    if (!response.ok) {
-      return false;
-    }
-    const data = await response.json();
-    if (data.d.results.length > 0) {
+
       return true;
+    } catch (error) {
+      console.log(error);
     }
     return false;
   }
 
   public async getCurrentUserGroups(): Promise<string[]> {
+    let groups = [];
+
     const reqUrl = this.webAbsoluteUrl + "/_api/web/currentuser/groups";
-    const response = await fetch(`${reqUrl}`, {
-      method: "GET",
-      headers: {
-        "Accept": "application/json;odata=verbose",
-        "odata-version": ""
+    try {
+      const response = await fetch(`${reqUrl}`, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json;odata=verbose",
+          "odata-version": ""
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        groups = data.d.results.map(gr => gr.LoginName);
       }
-    });
-    if (!response.ok) {
-      return [];
+    } catch (error) {
+      console.log(error);
     }
-    const data = await response.json();
-    let groups = data.d.results.map(gr => gr.LoginName);
+
     return groups;
   }
 }

@@ -40,7 +40,9 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
 
   public async render() {
 
-    const debugTitle = this.properties.debugTitle?.length > 0 ? this.properties.debugTitle : "";
+    const groups = this.properties.targetedGroups?.length > 0 ? this.properties.targetedGroups.map(gr => gr.login).join(',') : "";
+    const debugTitle = this.properties.debugTitle?.length > 0 ? this.properties.debugTitle : groups;
+
     const isSiteAdmin = this.context.pageContext.legacyPageContext[`isSiteAdmin`];
     const targetedGroups = this.properties.targetedGroups;
     const scriptBody = this.properties.scriptBody;
@@ -58,22 +60,18 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
       let isWebPartHiden = true;
       if (scriptBody?.length > 0) {
         if (!targetedGroups || targetedGroups.length === 0 || (isSiteAdmin && this.properties.alwaysDisplayForSiteAdmin)) {
-          if (debugTitle.length > 0) {
-            let reson = this.properties.targetedGroups?.length === 0 ? 'Groups not defined' : `${this.context.pageContext.user.loginName} is Site Admin`;
-            console.log(`${debugTitle} - Shown. ${reson}`);
-          }
+          let reson = this.properties.targetedGroups?.length > 0 ? `${this.context.pageContext.user.displayName} is Site Admin` : "Groups not defined"
+          console.log(`${this.instanceId} | ${debugTitle} - Shown. ${reson}`);
           isWebPartHiden = false;
         } else {
           const audienceService = new AudienceService(this.context.pageContext.site.absoluteUrl);
           const isInAudience = await audienceService.CheckAudiences(targetedGroups);
           if (isInAudience) {
-            if (debugTitle.length > 0) {
-              console.log(`${debugTitle} - Shown. ${this.context.pageContext.user.loginName} Has access/belongs/Admin to groups: ${targetedGroups?.map(gr => gr.fullName).join(',')}`);
-            }
+            console.log(`${this.instanceId} | ${debugTitle} - Shown. ${this.context.pageContext.user.displayName} has access/belongs/Admin to groups: ${groups}`);
             isWebPartHiden = false;
           } else {
             if (debugTitle.length > 0) {
-              console.log(`${debugTitle} - Hidden. ${this.context.pageContext.user.loginName} doesn't have access/belongs to any of groups: ${targetedGroups?.map((gr) => gr.fullName).join(',')}`);
+              console.log(`${this.instanceId} | ${debugTitle} - Hidden. ${this.context.pageContext.user.displayName} doesn't have access/belongs to any of groups: ${groups}`);
             }
           }
         }
