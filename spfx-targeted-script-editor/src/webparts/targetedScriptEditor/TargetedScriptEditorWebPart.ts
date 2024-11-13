@@ -13,8 +13,8 @@ export interface ITargetedScriptEditorWebPartProps {
   scriptBody: string;
   teamsContext: boolean;
   targetedGroups: IPropertyFieldGroupOrPerson[];
-  removePadding: boolean;
-  alwaysDisplayForSiteAdmin: boolean;
+  // removePadding: boolean;
+  // alwaysDisplayForSiteAdmin: boolean;
 }
 
 export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<ITargetedScriptEditorWebPartProps> {
@@ -38,11 +38,21 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
     this.context.propertyPane.open();
   }
 
+  protected GetDebugMessages(): Array<string> {
+    const debugMessages: Array<string> = [];
+    debugMessages.push(this.instanceId);
+    if (this.properties.debugTitle?.length > 0) {
+      debugMessages.push(this.properties.debugTitle);
+    }
+    if (this.properties.targetedGroups?.length > 0) {
+      debugMessages.push(this.properties.targetedGroups.map(gr => gr.login).join(','));
+    }
+    return debugMessages;
+  }
+
   public async render() {
 
-    const groups = this.properties.targetedGroups?.length > 0 ? this.properties.targetedGroups.map(gr => gr.login).join(',') : "";
-    const debugTitle = this.properties.debugTitle?.length > 0 ? this.properties.debugTitle : groups;
-
+    const debugMessages = this.GetDebugMessages();
     const isSiteAdmin = this.context.pageContext.legacyPageContext[`isSiteAdmin`];
     const targetedGroups = this.properties.targetedGroups;
     const scriptBody = this.properties.scriptBody;
@@ -59,20 +69,17 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
     } else {
       let isWebPartHiden = true;
       if (scriptBody?.length > 0) {
-        if (!targetedGroups || targetedGroups.length === 0 || (isSiteAdmin && this.properties.alwaysDisplayForSiteAdmin)) {
-          let reson = this.properties.targetedGroups?.length > 0 ? `${this.context.pageContext.user.displayName} is Site Admin` : "Groups not defined"
-          console.log(`${this.instanceId} | ${debugTitle} - Shown. ${reson}`);
+        if (!targetedGroups || targetedGroups.length === 0 || isSiteAdmin) {
+          console.log(`${debugMessages.join(' | ')} - Shown`);
           isWebPartHiden = false;
         } else {
           const audienceService = new AudienceService(this.context.pageContext.site.absoluteUrl);
           const isInAudience = await audienceService.CheckAudiences(targetedGroups);
-          if (isInAudience) {
-            console.log(`${this.instanceId} | ${debugTitle} - Shown. ${this.context.pageContext.user.displayName} has access/belongs/Admin to groups: ${groups}`);
+          if (isInAudience) {           
+            console.log(`${debugMessages.join(' | ')} - Shown`);
             isWebPartHiden = false;
           } else {
-            if (debugTitle.length > 0) {
-              console.log(`${this.instanceId} | ${debugTitle} - Hidden. ${this.context.pageContext.user.displayName} doesn't have access/belongs to any of groups: ${groups}`);
-            }
+            console.log(`${debugMessages.join(' | ')} - Hidden`);            
           }
         }
       }
@@ -81,7 +88,7 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
         this.domElement.innerHTML = '';
       }
 
-      if (this.displayMode === DisplayMode.Read && (isWebPartHiden || this.properties?.removePadding)) {
+      if (this.displayMode === DisplayMode.Read && isWebPartHiden) {
 
         let element = this.domElement.parentElement;
         // check up to 3 levels up for padding and exit once found
@@ -145,30 +152,14 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
         deferredValidationTime: 0,
         key: 'groupsFieldId'
       }),
-      PropertyPaneToggle("removePadding", {
-        label: "Remove top/bottom padding of web part container",
-        checked: this.properties.removePadding,
-        onText: "Remove padding",
-        offText: "Keep padding"
-      }),
-
-    ];
-
-    let webPartDebugOptions: IPropertyPaneField<any>[] = [
-      PropertyPaneToggle("alwaysDisplayForSiteAdmin", {
-        label: "Always Display for Site Administrators",
-        checked: this.properties.alwaysDisplayForSiteAdmin,
-        onText: "Display",
-        offText: "Hide"
-      }),
       PropertyPaneTextField('debugTitle', {
         label: "Title",
         multiline: false, // Set to true if you need a multi-line input
         resizable: false,
         placeholder: "Enter a title for the debugging.",
         description: "Enter a title for the debugging."
-      }),
-    ]
+      })
+    ];
 
     if (this.context.sdks.microsoftTeams) {
       let config = PropertyPaneToggle("teamsContext", {
@@ -189,10 +180,6 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
           groups: [
             {
               groupFields: webPartOptions
-            },
-            {
-              groupName: "Debugging",
-              groupFields: webPartDebugOptions
             }
           ]
         }
