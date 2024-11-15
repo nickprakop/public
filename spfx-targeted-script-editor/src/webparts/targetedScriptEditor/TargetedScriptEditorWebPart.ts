@@ -1,6 +1,6 @@
 import { DisplayMode } from '@microsoft/sp-core-library';
 import { SPComponentLoader } from '@microsoft/sp-loader';
-import { IPropertyPaneConfiguration, IPropertyPaneField, PropertyPaneTextField, PropertyPaneToggle } from '@microsoft/sp-property-pane';
+import { IPropertyPaneConfiguration, IPropertyPaneField, PropertyPaneToggle } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { Placeholder } from '@pnp/spfx-controls-react';
 import { IPropertyFieldGroupOrPerson } from '@pnp/spfx-property-controls';
@@ -9,7 +9,6 @@ import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import AudienceService from '../../services/AudienceService';
 export interface ITargetedScriptEditorWebPartProps {
-  debugTitle: string;
   scriptBody: string;
   teamsContext: boolean;
   targetedGroups: IPropertyFieldGroupOrPerson[];
@@ -38,23 +37,11 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
     this.context.propertyPane.open();
   }
 
-  protected GetDebugMessages(): Array<string> {
-    const debugMessages: Array<string> = [];
-    debugMessages.push(this.instanceId);
-    if (this.properties.debugTitle?.length > 0) {
-      debugMessages.push(this.properties.debugTitle);
-    }
-    if (this.properties.targetedGroups?.length > 0) {
-      debugMessages.push(this.properties.targetedGroups.map(gr => gr.login).join(','));
-    }
-    return debugMessages;
-  }
-
   public async render() {
-
-    const debugMessages = this.GetDebugMessages();
     const isSiteAdmin = this.context.pageContext.legacyPageContext[`isSiteAdmin`];
     const targetedGroups = this.properties.targetedGroups;
+    const targetGroupsInString = this.properties.targetedGroups?.length > 0 ? this.properties.targetedGroups.map(gr => gr.login).join(',') : "No targeting";
+
     const scriptBody = this.properties.scriptBody;
 
     if (this.displayMode === DisplayMode.Edit && (!scriptBody || scriptBody.trim().length === 0)) {
@@ -70,16 +57,16 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
       let isWebPartHiden = true;
       if (scriptBody?.length > 0) {
         if (!targetedGroups || targetedGroups.length === 0 || isSiteAdmin) {
-          console.log(`${debugMessages.join(' | ')} - Shown`);
+          console.log(`[Targeted Script Editor] Audience: '${targetGroupsInString}'. Web part is shown (${this.instanceId})`);
           isWebPartHiden = false;
         } else {
           const audienceService = new AudienceService(this.context.pageContext.site.absoluteUrl);
           const isInAudience = await audienceService.CheckAudiences(targetedGroups);
-          if (isInAudience) {           
-            console.log(`${debugMessages.join(' | ')} - Shown`);
+          if (isInAudience) {
+            console.log(`[Targeted Script Editor] Audience: '${targetGroupsInString}'. Web part is shown (${this.instanceId})`);
             isWebPartHiden = false;
           } else {
-            console.log(`${debugMessages.join(' | ')} - Hidden`);            
+            console.log(`[Targeted Script Editor] Audience: '${targetGroupsInString}'. Web part is hidden (${this.instanceId})`);
           }
         }
       }
@@ -151,13 +138,6 @@ export default class TargetedScriptEditorWebPart extends BaseClientSideWebPart<I
         onGetErrorMessage: undefined,
         deferredValidationTime: 0,
         key: 'groupsFieldId'
-      }),
-      PropertyPaneTextField('debugTitle', {
-        label: "Title",
-        multiline: false, // Set to true if you need a multi-line input
-        resizable: false,
-        placeholder: "Enter a title for the debugging.",
-        description: "Enter a title for the debugging."
       })
     ];
 
